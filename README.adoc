@@ -43,7 +43,6 @@ docker-hello-app:
 	--build-arg SPRING_BOOT_VERSION=$(SPRING_BOOT_VERSION) \
 	--build-arg SPRING_CLOUD_FUNCTION_VERSION=$(SPRING_CLOUD_FUNCTION_VERSION) \
 	--build-arg JAVA_APP_NAME=$(JAVA_APP_NAME) \
-    --build-arg FUNCTION_NAME=$(FUNCTION_NAME) \
 	--tag kameshsampath/ow-scf-fruiteason .
 ----
 
