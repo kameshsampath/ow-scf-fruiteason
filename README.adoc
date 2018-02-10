@@ -1,0 +1,141 @@
+= OpenShift - OpenWhisk - Spring Cloud Functions
+
+**fruiteason** demo application shows deploying https://github.com/spring-cloud/spring-cloud-function[Spring Cloud Functions] application to OpenWhisk deployed on 
+OpenShift/Kubernetes. 
+
+== Overview
+
+This example shows how to build and deploy a PlainOldFunction(POF) with Spring Boot, with function defined as Spring Bean(s).
+
+== Pre-requisite
+
+* https://github.com/minishift/minishift[Minishift]
+* https://github.com/apache/incubator-openwhisk/blob/master/docs/cli.md[OpenWhisk CLI]
+* https://github.com/projectodd/incubator-openwhisk-deploy-kube/tree/simplify-deployment-openshift[OpenWhisk Deployed on OpenShift/Kubernetes]
+
+== Build 
+
+=== Build application
+[code,sh]
+----
+./mvnw clean install
+----
+
+=== Docker Build application
+
+To make the builds faster and resolve to right repositories the application uses `contrib/settings.xml` during
+build. 
+
+NOTE: The default app is configured to use mirrors, it can be removed if you don't use nexus
+
+The Docker build takes the following arguments,
+
+* `APP_VERSION` default `0.0.1-SNAPSHOT`
+* `SPRING_BOOT_VERSION` default `1.5.9.RELEASE`
+* `SPRING_CLOUD_FUNCTION_VERSION` default `1.0.0.BUILD-SNAPSHOT`
+* `FUNCTION_NAME` default `fruiteason`
+
+[code,sh]
+----
+docker-hello-app:
+	docker build --rm \
+	--build-arg APP_VERSION=$(APP_VERSION) \
+	--build-arg SPRING_BOOT_VERSION=$(SPRING_BOOT_VERSION) \
+	--build-arg SPRING_CLOUD_FUNCTION_VERSION=$(SPRING_CLOUD_FUNCTION_VERSION) \
+	--build-arg JAVA_APP_NAME=$(JAVA_APP_NAME) \
+    --build-arg FUNCTION_NAME=$(FUNCTION_NAME) \
+	--tag kameshsampath/ow-scf-fruiteason .
+----
+
+=== Deploying Function to OpenWhisk
+
+==== Create 
+
+[code,sh]
+----
+wsk -i action create hello --docker kameshsampath/ow-scf-fruiteason
+----
+==== Update 
+
+[code,sh]
+----
+wsk -i update create hello --docker kameshsampath/ow-scf-fruiteason
+----
+
+=== Testing Function
+
+As the function takes single parameter called `name`, it is required to pass it via function parameter 
+name called `payload`. The following snippet shows how to invoke it via OpenWhisk CLI:
+
+
+==== OpenWhisk CLI 
+
+===== Getting All Season Fruits 
+
+[code,sh]
+----
+wsk -i action invoke fruiteason --param-file src/test/all.json --result
+----
+
+===== Getting Summer Fruits 
+
+[code,sh]
+----
+wsk -i action invoke fruiteason --param-file src/test/summer.json --result
+----
+
+===== Getting Winter Fruits 
+
+[code,sh]
+----
+wsk -i action invoke fruiteason --param-file src/test/winter.json --result
+----
+
+===== Getting Spring Fruits 
+
+[code,sh]
+----
+wsk -i action invoke fruiteason --param-file src/test/spring.json --result
+----
+
+===== Getting Fall Fruits 
+
+[code,sh]
+----
+wsk -i action invoke fruiteason --param-file src/test/fall.json --result
+----
+
+==== REST API 
+
+Each OpenWhisk action that is deployed can be invoked using https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md[REST API]:
+
+[code,sh]
+----
+URL=$(wsk -i action get greeter --url | tail -n 1) <1>
+AUTH=$(wsk -i property get --auth | awk '{print $3}') <2>
+curl -k -H "Content-Type: application/json" -u "$AUTH" -d '{"payload": "openshift"}' $URL <3>
+wsk -i activation result [activationId from <3>]  <4>
+----
+<1> Get the function REST url 
+<2> Get the credentials to invoke the action
+<3> Will return a activation id e.g. `{"activationId":"3fc210dc8acf47788210dc8acf277875"}`
+<4> Will output the result of curl call
+
+== Base Docker Images
+
+The Spring Boot applications need to build the custom docker images to run the app, the details of how to build the docker image is 
+available https://github.com/spring-cloud/spring-cloud-function/tree/master/spring-cloud-function-adapters/spring-cloud-function-adapter-openwhisk[here], 
+
+For convenience the following docker images are built and available to be used to run Spring Cloud Functions on OpenWhisk:
+
+* `https://hub.docker.com/r/kameshsampath/ow-scf-base/` - this base image for all OpenWhisk and Spring Cloud Functions applications
+
+* `https://hub.docker.com/r/kameshsampath/ow-scf-app-runner/` - this image extends base image and suitable for running Spring Cloud Function Spring Boot Applications
+
+* `https://hub.docker.com/r/kameshsampath/ow-scf-fn-runner/` - this image extends base image and suitable for running Spring Cloud Function Applications as POF
+
+The sources of the docker images is available https://github.com/redhat-developer-demos/openwhisk-scf-docker[here]
+
+NOTE: Applications and bases images uses **SNAPSHOT** builds
+
+
